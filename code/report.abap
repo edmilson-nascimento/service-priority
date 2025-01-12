@@ -358,12 +358,14 @@ CLASS application IMPLEMENTATION.
 
     DATA(lt_fieldcatalog) = VALUE lvc_t_fcat( tabname = 'ZCA_TQUERMESSEBC'
                                               ( row_pos   = 1
-                                                fieldname = 'INC' )
+                                                fieldname = 'INDEX' )
                                               ( row_pos   = 2
-                                                fieldname = 'DESCRICAO_OC' )
+                                                fieldname = 'INC' )
                                               ( row_pos   = 3
-                                                fieldname = 'LABEL_OC' )
+                                                fieldname = 'DESCRICAO_OC' )
                                               ( row_pos   = 4
+                                                fieldname = 'LABEL_OC' )
+                                              ( row_pos   = 5
                                                 fieldname = 'BC' ) ).
 
     grid->set_table_for_first_display( EXPORTING is_layout       = gs_layout
