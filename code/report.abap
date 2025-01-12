@@ -2,47 +2,12 @@ REPORT priory.
 
 TYPE-POOLS: abap, cntb.
 
-**
-*DATA: carrid TYPE alv_t_t2-carrid,
-*      connid TYPE alv_t_t2-connid.
-*
-** selection-screen
-*SELECTION-SCREEN BEGIN OF BLOCK tab WITH FRAME TITLE TEXT-001.
-*SELECTION-SCREEN BEGIN OF LINE.
-*PARAMETERS move_row RADIOBUTTON GROUP tab1.
-*SELECTION-SCREEN COMMENT 5(79) TEXT-002.
-*SELECTION-SCREEN END OF LINE.
-*SELECTION-SCREEN BEGIN OF LINE.
-*PARAMETERS chng_row RADIOBUTTON GROUP tab1.
-*SELECTION-SCREEN COMMENT 5(79) TEXT-003.
-*SELECTION-SCREEN END OF LINE.
-*SELECTION-SCREEN BEGIN OF LINE.
-*PARAMETERS chng_col RADIOBUTTON GROUP tab1.
-*SELECTION-SCREEN COMMENT 5(79) TEXT-004.
-*SELECTION-SCREEN END OF LINE.
-*SELECTION-SCREEN BEGIN OF LINE.
-*PARAMETERS copy_cel RADIOBUTTON GROUP tab1.
-*SELECTION-SCREEN COMMENT 5(79) TEXT-005.
-*SELECTION-SCREEN END OF LINE.
-*SELECTION-SCREEN BEGIN OF LINE.
-*PARAMETERS data_cel RADIOBUTTON GROUP tab1.
-*SELECTION-SCREEN COMMENT 5(79) TEXT-006.
-*SELECTION-SCREEN END OF LINE.
-*SELECTION-SCREEN END OF BLOCK tab.
-*
-** parameters for the selection screen
-*PARAMETERS: pa_car LIKE carrid DEFAULT 'LH',
-*            pa_con LIKE connid DEFAULT '402'.
-*SELECTION-SCREEN SKIP.
-*PARAMETERS: pa_rows TYPE i DEFAULT '200'.
-*PARAMETERS: pa_del TYPE char1 DEFAULT 'X'.
-
-
-CLASS lcl_order_list DEFINITION CREATE PUBLIC.
+CLASS priority DEFINITION CREATE PUBLIC.
 
   PUBLIC SECTION.
     TYPES:
       BEGIN OF ty_ordenation,
+        index        TYPE edi_clustc,
         inc          TYPE zca_tquermessebc-inc,
         descricao_oc TYPE zca_tquermessebc-descricao_oc,
         label_oc     TYPE zca_tquermessebc-label_oc,
@@ -58,7 +23,7 @@ CLASS lcl_order_list DEFINITION CREATE PUBLIC.
 
     METHODS get_bc_list
       IMPORTING im_bc         TYPE zca_tquermessebc-bc
-      RETURNING VALUE(result) TYPE lcl_order_list=>tab_ordenation.
+      RETURNING VALUE(result) TYPE priority=>tab_ordenation.
 
   PRIVATE SECTION.
 
@@ -87,7 +52,7 @@ CLASS lcl_order_list DEFINITION CREATE PUBLIC.
 
 ENDCLASS.
 
-CLASS lcl_order_list IMPLEMENTATION.
+CLASS priority IMPLEMENTATION.
 
   METHOD get_responsable.
 
@@ -225,7 +190,7 @@ DATA: application  TYPE REF TO application,
       ok_code      TYPE sy-ucomm,
       save_ok_code TYPE ok_code,
       gs_layout    TYPE lvc_s_layo,
-      gt_list      TYPE lcl_order_list=>tab_ordenation.
+      gt_list      TYPE priority=>tab_ordenation.
 
 
 *&---------------------------------------------------------------------*
@@ -236,7 +201,7 @@ CLASS drag_drop_object DEFINITION.
   PUBLIC SECTION.
 
     DATA:
-      line_help  TYPE lcl_order_list=>ty_ordenation,
+      line_help  TYPE priority=>ty_ordenation,
       index_help TYPE i.
 
 ENDCLASS.
@@ -278,7 +243,7 @@ CLASS application IMPLEMENTATION.
 
     DATA: data_object TYPE REF TO drag_drop_object,
           " TODO: variable is assigned but never used (ABAP cleaner)
-          help_row    TYPE lcl_order_list=>ty_ordenation.
+          help_row    TYPE priority=>ty_ordenation.
 
     READ TABLE gt_list INTO help_row INDEX es_row_no-row_id.
 
@@ -381,7 +346,7 @@ CLASS application IMPLEMENTATION.
 
     build_and_assign_handler( ).
 
-    DATA(object) = NEW lcl_order_list( ).
+    DATA(object) = NEW priority( ).
 
     DATA(bc) = object->get_responsable( ).
     IF bc IS INITIAL.
@@ -422,8 +387,9 @@ CLASS application IMPLEMENTATION.
                          effect_in_ctrl = cl_dragdrop=>move ).
 
     grid_behaviour->get_handle( IMPORTING handle = handle_grid ).
-    gs_layout-zebra   = abap_on.
-*    gs_layout-col_opt = abap_on.
+
+    " gs_layout-zebra   = abap_on.
+    gs_layout-col_opt = abap_on.
     gs_layout-s_dragdrop-row_ddid = handle_grid.
 
   ENDMETHOD.
@@ -563,13 +529,6 @@ ENDCLASS.
 
 
 INITIALIZATION.
-
-
-*  object->display_bc_list( bc ).
-
-  " Listar os Incidentes do BC
-
-* SET SCREEN 100.
 
 
 START-OF-SELECTION.
