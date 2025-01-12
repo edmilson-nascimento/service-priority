@@ -60,8 +60,6 @@ CLASS lcl_order_list DEFINITION CREATE PUBLIC.
       IMPORTING im_bc         TYPE zca_tquermessebc-bc
       RETURNING VALUE(result) TYPE lcl_order_list=>tab_ordenation.
 
-  PROTECTED SECTION.
-
   PRIVATE SECTION.
 
     TYPES:
@@ -165,18 +163,15 @@ CLASS lcl_order_list IMPLEMENTATION.
                           name_text = l-name_text ) ).
 
     CALL FUNCTION 'HELP_VALUES_GET_WITH_TABLE'
-      IMPORTING
-        select_value              = select_value                " selected value
-      TABLES
-        fields                    = fields                 " internal table for transfer of the
-        valuetab                  = valuetab                 " internal table for transfer of the
-      EXCEPTIONS
-        field_not_in_ddic         = 1                " Table field not listed in the Dict
-        more_then_one_selectfield = 2                " During selection, only transfer of
-        no_selectfield            = 3                " No field selected for transfer
-        OTHERS                    = 4.
+      IMPORTING  select_value              = select_value                " selected value
+      TABLES     fields                    = fields                 " internal table for transfer of the
+                 valuetab                  = valuetab                 " internal table for transfer of the
+      EXCEPTIONS field_not_in_ddic         = 1                " Table field not listed in the Dict
+                 more_then_one_selectfield = 2                " During selection, only transfer of
+                 no_selectfield            = 3                " No field selected for transfer
+                 OTHERS                    = 4.
     IF sy-subrc <> 0.
-      RETURN .
+      RETURN.
     ENDIF.
 
     result = select_value-bc.
@@ -209,7 +204,7 @@ CLASS lcl_order_list IMPLEMENTATION.
   METHOD display_order_list.
 
     " Temporario
-    cl_demo_output=>display( data =  im_data ) .
+    cl_demo_output=>display( data = im_data ).
 
   ENDMETHOD.
 
@@ -224,64 +219,50 @@ ENDCLASS.
 CLASS application DEFINITION DEFERRED.
 
 
-DATA: application       TYPE REF TO application,
-      container         TYPE REF TO cl_gui_docking_container,
-      grid              TYPE REF TO cl_gui_alv_grid,
-      grid_behaviour    TYPE REF TO cl_dragdrop,
-      ok_code           LIKE sy-ucomm,
-      save_ok_code      LIKE ok_code,
-*      m                 LIKE sy-tabix,
-*      gt_outtab         TYPE alv_t_t2 OCCURS 0,
-*      gt_outtab_2       TYPE alv_t_t2 OCCURS 0,
-*      gs_outtab         LIKE LINE OF gt_outtab,
-*      gs_outtab_2       LIKE LINE OF gt_outtab_2,
-*      fieldcat          TYPE lvc_t_fcat, " WITH HEADER LINE,
-*      ls_fieldcat       LIKE LINE OF fieldcat,
-      gs_layout         TYPE lvc_s_layo,
-*      it_sflight        LIKE STANDARD TABLE OF sflight WITH HEADER LINE,
-*      ls_celltab        TYPE lvc_s_drdr,
-*      index_gt_outtab_3 TYPE i,
-*      index             TYPE i,
-*      gs_outtab_3       LIKE LINE OF gt_outtab_3,
-      gt_list           TYPE lcl_order_list=>tab_ordenation.
+DATA: application  TYPE REF TO application,
+      container    TYPE REF TO cl_gui_docking_container,
+      grid         TYPE REF TO cl_gui_alv_grid,
+      ok_code      TYPE sy-ucomm,
+      save_ok_code TYPE ok_code,
+      gs_layout    TYPE lvc_s_layo,
+      gt_list      TYPE lcl_order_list=>tab_ordenation.
 
 
 *&---------------------------------------------------------------------*
 *&       Class DRAG_DROP_OBJECT
 *&---------------------------------------------------------------------*
-*        Text
-*----------------------------------------------------------------------*
 CLASS drag_drop_object DEFINITION.
 
   PUBLIC SECTION.
-    DATA: wa_test TYPE lcl_order_list=>ty_ordenation,
-          index   TYPE i.
+
+    DATA:
+      line_help  TYPE lcl_order_list=>ty_ordenation,
+      index_help TYPE i.
 
 ENDCLASS.
 
 
 *&---------------------------------------------------------------------*
-*&---------------------------------------------------------------------*
 *&       Class APPLICATION
 *&---------------------------------------------------------------------*
-*        Text
-*----------------------------------------------------------------------*
 CLASS application DEFINITION.
 
   PUBLIC SECTION.
     " methods for D&D handling
-    METHODS: handle_grid_drag FOR EVENT ondrag OF cl_gui_alv_grid
-      IMPORTING es_row_no e_column e_dragdropobj,
+    METHODS handle_grid_drag FOR EVENT ondrag OF cl_gui_alv_grid
+      IMPORTING es_row_no e_column e_dragdropobj.
 
-      handle_grid_drop FOR EVENT ondrop OF cl_gui_alv_grid
-        IMPORTING e_row e_column e_dragdropobj,
+    METHODS handle_grid_drop FOR EVENT ondrop OF cl_gui_alv_grid
+      IMPORTING e_row e_column e_dragdropobj.
 
-      handle_grid_drop_complete FOR EVENT ondropcomplete OF
-                  cl_gui_alv_grid
-        IMPORTING e_row e_column e_dragdropobj.
+    METHODS handle_grid_drop_complete FOR EVENT ondropcomplete OF
+                 cl_gui_alv_grid
+      IMPORTING e_row e_column e_dragdropobj.
 
-    METHODS create_controls.
-    METHODS build_and_assign_handler.
+    CLASS-METHODS create_controls.
+
+  PRIVATE SECTION.
+    CLASS-METHODS build_and_assign_handler.
 
 ENDCLASS.
 
@@ -296,20 +277,21 @@ CLASS application IMPLEMENTATION.
   METHOD handle_grid_drag.
 
     DATA: data_object TYPE REF TO drag_drop_object,
-          help_row    type lcl_order_list=>ty_ordenation.
+          " TODO: variable is assigned but never used (ABAP cleaner)
+          help_row    TYPE lcl_order_list=>ty_ordenation.
 
     READ TABLE gt_list INTO help_row INDEX es_row_no-row_id.
 
-    CREATE OBJECT data_object.
+    data_object = NEW #( ).
 
-    MOVE es_row_no-row_id TO data_object->index.
+    data_object->index_help = es_row_no-row_id.
 
-    READ TABLE gt_list INTO data_object->wa_test INDEX
+    READ TABLE gt_list INTO data_object->line_help INDEX
     es_row_no-row_id.
 
     e_dragdropobj->object = data_object.
 
-  ENDMETHOD.                    "handle_grid_drag
+  ENDMETHOD.
 
 
   METHOD handle_grid_drop.
@@ -320,8 +302,8 @@ CLASS application IMPLEMENTATION.
 
       data_object ?= e_dragdropobj->object.
 
-      DELETE gt_list INDEX data_object->index.
-      INSERT data_object->wa_test INTO gt_list INDEX e_row-index.
+      DELETE gt_list INDEX data_object->index_help.
+      INSERT data_object->line_help INTO gt_list INDEX e_row-index.
 
     ENDCATCH.
 
@@ -370,68 +352,121 @@ CLASS application IMPLEMENTATION.
 *
 *    IF data_cel = ' '.
 * refresh the table display to make the changes visible at the frontend
-      CALL METHOD grid->refresh_table_display.
+    grid->refresh_table_display( ).
 *    ENDIF.
 *
 *    IF sy-subrc <> 0.
 *      CALL METHOD e_dragdropobj->abort.
 *    ENDIF.
 
-  ENDMETHOD.                    "handle_grid_drop_complete
+  ENDMETHOD.
+
 
   METHOD create_controls.
+
+
+    " creation of the ALV Grid Control via a docking container
+    container = NEW #( dynnr     = '100'
+                       extension = 312
+                       side      = cl_gui_docking_container=>dock_at_top ).
+
+    grid = NEW #( i_parent = container ).
+
+    application = NEW #( ).
+
+    " registrate the methods
+    SET HANDLER application->handle_grid_drag FOR grid.
+    SET HANDLER application->handle_grid_drop FOR grid.
+    SET HANDLER application->handle_grid_drop_complete FOR grid.
+
+    build_and_assign_handler( ).
+
+    DATA(object) = NEW lcl_order_list( ).
+
+    DATA(bc) = object->get_responsable( ).
+    IF bc IS INITIAL.
+      RETURN.
+    ENDIF.
+    gt_list = object->get_bc_list( bc ).
+
+*  gs_layout =
+
+    DATA(lt_fieldcatalog) = VALUE lvc_t_fcat( tabname = 'ZCA_TQUERMESSEBC'
+                                              ( row_pos   = 1
+                                                fieldname = 'INC' )
+                                              ( row_pos   = 2
+                                                fieldname = 'DESCRICAO_OC' )
+                                              ( row_pos   = 3
+                                                fieldname = 'LABEL_OC' )
+                                              ( row_pos   = 4
+                                                fieldname = 'BC' ) ).
+
+    grid->set_table_for_first_display( EXPORTING is_layout       = gs_layout
+                                       CHANGING  it_fieldcatalog = lt_fieldcatalog
+                                                 it_outtab       = gt_list ).
   ENDMETHOD.
 
 
   METHOD build_and_assign_handler.
+
+    DATA handle_grid TYPE i.
+
+    DATA(grid_behaviour) = NEW cl_dragdrop( ).
+    IF grid_behaviour IS NOT BOUND.
+      RETURN.
+    ENDIF.
+
+    grid_behaviour->add( flavor         = 'LINE'
+                         dragsrc        = 'X'
+                         droptarget     = 'X'
+                         effect_in_ctrl = cl_dragdrop=>move ).
+
+    grid_behaviour->get_handle( IMPORTING handle = handle_grid ).
+    gs_layout-zebra   = abap_on.
+*    gs_layout-col_opt = abap_on.
+    gs_layout-s_dragdrop-row_ddid = handle_grid.
+
   ENDMETHOD.
 
-ENDCLASS.               "application
+ENDCLASS.
 
 
 *&---------------------------------------------------------------------*
 *&      Module  STATUS_0100  OUTPUT
 *&---------------------------------------------------------------------*
-*       text
-*----------------------------------------------------------------------*
 MODULE status_0100 OUTPUT.
 
   SET PF-STATUS 'STATUS_0100'.
   SET TITLEBAR 'STATUS_0100'.
 
-  IF grid IS INITIAL.
-* creation of all the controls
-    PERFORM create_controls.
+  IF grid IS BOUND.
+    RETURN.
   ENDIF.
 
-ENDMODULE.                 " STATUS_0100  OUTPUT
+  application=>create_controls( ).
+
+ENDMODULE.
 
 
 *&---------------------------------------------------------------------*
 *&      Module  USER_COMMAND_0100  INPUT
 *&---------------------------------------------------------------------*
-*       text
-*----------------------------------------------------------------------*
 MODULE user_command_0100 INPUT.
 
   save_ok_code = ok_code.
   CLEAR ok_code.
 
-* check the functions' code after your input
+  " check the functions' code after your input
   CASE save_ok_code.
     WHEN 'EXIT' OR 'BACK'.
-      IF NOT container IS INITIAL.
-        CALL METHOD container->free
-          EXCEPTIONS
-            cntl_system_error = 1
-            cntl_error        = 2.
+      IF container IS NOT INITIAL.
+        container->free( EXCEPTIONS cntl_system_error = 1
+                                    cntl_error        = 2 ).
         IF sy-subrc <> 0.
           MESSAGE a000(>0).
         ENDIF.
-        CALL METHOD cl_gui_cfw=>flush
-          EXCEPTIONS
-            cntl_system_error = 1
-            cntl_error        = 2.
+        cl_gui_cfw=>flush( EXCEPTIONS cntl_system_error = 1
+                                      cntl_error        = 2 ).
         IF sy-subrc <> 0.
           MESSAGE a000(>0).
         ENDIF.
@@ -441,98 +476,14 @@ MODULE user_command_0100 INPUT.
           CALL SELECTION-SCREEN 1000.
         ENDIF.
       ENDIF.
+    WHEN 'SAVE'.
+      LEAVE PROGRAM.
+    WHEN OTHERS.
   ENDCASE.
 
   CLEAR save_ok_code.
 
-ENDMODULE.                 " USER_COMMAND_0100  INPUT
-
-
-*&---------------------------------------------------------------------*
-*&      Form  create_controls
-*&---------------------------------------------------------------------*
-*       text
-*----------------------------------------------------------------------*
-*  -->  p1        text
-*  <--  p2        text
-*----------------------------------------------------------------------*
-FORM create_controls .
-
-* creation of the ALV Grid Control via a docking container
-  CREATE OBJECT container
-    EXPORTING
-      dynnr     = '100'
-      extension = 312
-      side      = cl_gui_docking_container=>dock_at_top.
-
-  CREATE OBJECT grid
-    EXPORTING
-      i_parent = container.
-
-  CREATE OBJECT application.
-
-  " registrate the methods
-  SET HANDLER application->handle_grid_drag FOR grid.
-  SET HANDLER application->handle_grid_drop FOR grid.
-  SET HANDLER application->handle_grid_drop_complete FOR grid.
-
-  PERFORM build_and_assign_handler.
-
-  DATA(object) = NEW lcl_order_list( ).
-
-  DATA(bc) = object->get_responsable( ).
-  IF bc IS INITIAL.
-    RETURN.
-  ENDIF.
-  gt_list = object->get_bc_list( bc ).
-
-*  gs_layout =
-
-  DATA(lt_fieldcatalog) = VALUE lvc_t_fcat( tabname = 'ZCA_TQUERMESSEBC'
-                                            ( row_pos   = 1
-                                              fieldname = 'INC' )
-                                            ( row_pos   = 2
-                                              fieldname = 'descricao_oc' )
-                                            ( row_pos   = 3
-                                              fieldname = 'label_oc' )
-                                            ( row_pos   = 4
-                                              fieldname = 'BC' ) ).
-
-  grid->set_table_for_first_display( EXPORTING is_layout       = gs_layout
-                                     CHANGING  it_fieldcatalog = lt_fieldcatalog
-                                               it_outtab       = gt_list ).
-
-ENDFORM.                    " create_controls
-
-
-*&---------------------------------------------------------------------*
-*&      Form  build_and_assign_handler
-*&---------------------------------------------------------------------*
-*       text
-*----------------------------------------------------------------------*
-*  -->  p1        text
-*  <--  p2        text
-*----------------------------------------------------------------------*
-FORM build_and_assign_handler.
-
-  DATA: effect_move TYPE i,
-        handle_grid TYPE i.
-
-
-  grid_behaviour = NEW #( ).
-  effect_move = cl_dragdrop=>move.
-
-  grid_behaviour->add( flavor         = 'LINE'
-                       dragsrc        = 'X'
-                       droptarget     = 'X'
-                       effect_in_ctrl = effect_move ).
-
-  grid_behaviour->get_handle( IMPORTING handle = handle_grid ).
-  gs_layout-zebra = abap_on.
-  gs_layout-col_opt = abap_on.
-  gs_layout-s_dragdrop-row_ddid = handle_grid.
-
-ENDFORM.
+ENDMODULE.
 
 
 CLASS lcl_material DEFINITION CREATE PUBLIC.
@@ -602,12 +553,9 @@ CLASS lcl_material IMPLEMENTATION.
   METHOD bapi.
 
     CALL FUNCTION 'BAPI_MATERIAL_SAVEDATA'
-      EXPORTING
-        headdata            = me->gs_header
-      IMPORTING
-        return              = result
-      TABLES
-        materialdescription = me->gt_description.
+      EXPORTING headdata            = me->gs_header
+      IMPORTING return              = result
+      TABLES    materialdescription = me->gt_description.
 
   ENDMETHOD.
 
