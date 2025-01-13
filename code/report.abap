@@ -221,13 +221,16 @@ CLASS application DEFINITION.
       IMPORTING e_row e_column e_dragdropobj.
 
     METHODS handle_grid_drop_complete FOR EVENT ondropcomplete OF
-                 cl_gui_alv_grid
+                cl_gui_alv_grid
       IMPORTING e_row e_column e_dragdropobj.
 
-    CLASS-METHODS create_controls.
+    METHODS create_controls.
 
   PRIVATE SECTION.
-    CLASS-METHODS build_and_assign_handler.
+    METHODS build_and_assign_handler.
+
+    METHODS build_data
+      RETURNING VALUE(result) TYPE priority=>tab_ordenation.
 
 ENDCLASS.
 
@@ -235,17 +238,14 @@ ENDCLASS.
 *&---------------------------------------------------------------------*
 *&       Class (Implementation)  application
 *&---------------------------------------------------------------------*
-*        Text
-*----------------------------------------------------------------------*
 CLASS application IMPLEMENTATION.
 
   METHOD handle_grid_drag.
 
-    DATA: data_object TYPE REF TO drag_drop_object,
-          " TODO: variable is assigned but never used (ABAP cleaner)
-          help_row    TYPE priority=>ty_ordenation.
+    DATA data_object TYPE REF TO drag_drop_object.
+*          help_row    TYPE priority=>ty_ordenation.
 
-    READ TABLE gt_list INTO help_row INDEX es_row_no-row_id.
+*    READ TABLE gt_list INTO help_row INDEX es_row_no-row_id.
 
     data_object = NEW #( ).
 
@@ -263,72 +263,27 @@ CLASS application IMPLEMENTATION.
 
     DATA data_object TYPE REF TO drag_drop_object.
 
-    CATCH SYSTEM-EXCEPTIONS move_cast_error = 1.
+*    CATCH SYSTEM-EXCEPTIONS move_cast_error = 1.
 
-      data_object ?= e_dragdropobj->object.
+    data_object ?= e_dragdropobj->object.
 
-      DELETE gt_list INDEX data_object->index_help.
-      INSERT data_object->line_help INTO gt_list INDEX e_row-index.
+    DELETE gt_list INDEX data_object->index_help.
+    INSERT data_object->line_help INTO gt_list INDEX e_row-index.
 
-    ENDCATCH.
+*    ENDCATCH.
 
   ENDMETHOD.
 
 
   METHOD handle_grid_drop_complete.
 
-*    IF e_dragdropobj->effect = cl_dragdrop=>copy.
-*      IF chng_col = 'X'.
-*        CALL METHOD grid->get_frontend_fieldcatalog
-*          IMPORTING
-*            et_fieldcatalog = fieldcat.
-** if you want to change the positions of the columns in the table
-**by d&d'ing one cell of the first column to another cell of the second
-**column
-*        LOOP AT fieldcat[] INTO ls_fieldcat WHERE fieldname = 'PRICE'.
-*          IF ls_fieldcat-col_pos = '4'.
-*            ls_fieldcat-col_pos = '10'.
-*            MODIFY fieldcat[] FROM ls_fieldcat.
-*          ENDIF.
-*          IF ls_fieldcat-col_pos = '9'.
-*            ls_fieldcat-col_pos = '4'.
-*            MODIFY fieldcat[] FROM ls_fieldcat.
-*          ENDIF.
-*        ENDLOOP.
-*        CLEAR ls_fieldcat.
-*        LOOP AT fieldcat[] INTO ls_fieldcat WHERE fieldname =
-*        'PAYMENTSUM'.
-*          IF ls_fieldcat-col_pos = '4'.
-*            ls_fieldcat-col_pos = '10'.
-*            MODIFY fieldcat[] FROM ls_fieldcat.
-*          ENDIF.
-*          IF ls_fieldcat-col_pos = '9'.
-*            ls_fieldcat-col_pos = '4'.
-*            MODIFY fieldcat[] FROM ls_fieldcat.
-*          ENDIF.
-*        ENDLOOP.
-** set the fieldcatalog to make the changes at the backend
-*        CALL METHOD grid->set_frontend_fieldcatalog
-*          EXPORTING
-*            it_fieldcatalog = fieldcat[].
-*
-*      ENDIF.
-*    ENDIF.
-*
-*    IF data_cel = ' '.
-* refresh the table display to make the changes visible at the frontend
+    " refresh the table display to make the changes visible at the frontend
     grid->refresh_table_display( ).
-*    ENDIF.
-*
-*    IF sy-subrc <> 0.
-*      CALL METHOD e_dragdropobj->abort.
-*    ENDIF.
 
   ENDMETHOD.
 
 
   METHOD create_controls.
-
 
     " creation of the ALV Grid Control via a docking container
     container = NEW #( dynnr     = '100'
@@ -337,36 +292,33 @@ CLASS application IMPLEMENTATION.
 
     grid = NEW #( i_parent = container ).
 
-    application = NEW #( ).
-
     " registrate the methods
-    SET HANDLER application->handle_grid_drag FOR grid.
-    SET HANDLER application->handle_grid_drop FOR grid.
-    SET HANDLER application->handle_grid_drop_complete FOR grid.
+    SET HANDLER me->handle_grid_drag FOR grid.
+    SET HANDLER me->handle_grid_drop FOR grid.
+    SET HANDLER me->handle_grid_drop_complete FOR grid.
 
-    build_and_assign_handler( ).
+    me->build_and_assign_handler( ).
+    gt_list = me->build_data( ).
 
-    DATA(object) = NEW priority( ).
-
-    DATA(bc) = object->get_responsable( ).
-    IF bc IS INITIAL.
-      RETURN.
-    ENDIF.
-    gt_list = object->get_bc_list( bc ).
-
-*  gs_layout =
-
-    DATA(lt_fieldcatalog) = VALUE lvc_t_fcat( tabname = 'ZCA_TQUERMESSEBC'
+    " TODO atualizar em um metodo e usar de forma dinamica
+    DATA(lt_fieldcatalog) = VALUE lvc_t_fcat( tabname   = 'ZCA_TQUERMESSEBC'
+                                              ref_table = 'ZCA_TQUERMESSEBC'
                                               ( row_pos   = 1
-                                                fieldname = 'INDEX' )
+                                                fieldname = 'INDEX'
+                                                ref_field = 'INDEX' )
                                               ( row_pos   = 2
-                                                fieldname = 'INC' )
+                                                fieldname = 'INC'
+                                                ref_field = 'INC' )
                                               ( row_pos   = 3
-                                                fieldname = 'DESCRICAO_OC' )
+                                                fieldname = 'DESCRICAO_OC'
+                                                outputlen = 50
+                                                ref_field = 'DESCRICAO_OC' )
                                               ( row_pos   = 4
-                                                fieldname = 'LABEL_OC' )
+                                                fieldname = 'LABEL_OC'
+                                                ref_field = 'LABEL_OC' )
                                               ( row_pos   = 5
-                                                fieldname = 'BC' ) ).
+                                                fieldname = 'BC'
+                                                ref_field = 'BC' ) ).
 
     grid->set_table_for_first_display( EXPORTING is_layout       = gs_layout
                                        CHANGING  it_fieldcatalog = lt_fieldcatalog
@@ -391,8 +343,29 @@ CLASS application IMPLEMENTATION.
     grid_behaviour->get_handle( IMPORTING handle = handle_grid ).
 
     " gs_layout-zebra   = abap_on.
-    gs_layout-col_opt = abap_on.
+    " gs_layout-col_opt = abap_on.
     gs_layout-s_dragdrop-row_ddid = handle_grid.
+
+  ENDMETHOD.
+
+
+  METHOD build_data.
+
+    DATA(object) = NEW priority( ).
+
+    DATA(bc) = object->get_responsable( ).
+    IF bc IS INITIAL.
+      RETURN.
+    ENDIF.
+
+    result = VALUE #( FOR l IN object->get_bc_list( bc )
+                      INDEX INTO index
+                      ( CORRESPONDING #( l ) ) ).
+
+    result = VALUE #( FOR l IN object->get_bc_list( bc )
+                          INDEX INTO index
+                      LET base = VALUE priority=>ty_ordenation( index = CONV #( index ) )
+                      IN  ( CORRESPONDING #( BASE ( base ) l ) ) ).
 
   ENDMETHOD.
 
@@ -411,7 +384,12 @@ MODULE status_0100 OUTPUT.
     RETURN.
   ENDIF.
 
-  application=>create_controls( ).
+  application = NEW #( ).
+  IF application IS NOT BOUND.
+    RETURN.
+  ENDIF.
+
+  application->create_controls( ).
 
 ENDMODULE.
 
@@ -426,6 +404,7 @@ MODULE user_command_0100 INPUT.
 
   " check the functions' code after your input
   CASE save_ok_code.
+
     WHEN 'EXIT' OR 'BACK'.
       IF container IS NOT INITIAL.
         container->free( EXCEPTIONS cntl_system_error = 1
@@ -438,15 +417,14 @@ MODULE user_command_0100 INPUT.
         IF sy-subrc <> 0.
           MESSAGE a000(>0).
         ENDIF.
-        IF save_ok_code = 'EXIT'.
-          LEAVE PROGRAM.
-        ELSE.
-          CALL SELECTION-SCREEN 1000.
-        ENDIF.
       ENDIF.
+      LEAVE PROGRAM.
+
     WHEN 'SAVE'.
       LEAVE PROGRAM.
+
     WHEN OTHERS.
+
   ENDCASE.
 
   CLEAR save_ok_code.
