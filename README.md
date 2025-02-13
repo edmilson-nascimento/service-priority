@@ -32,4 +32,18 @@ gantt
     QA & Testing              :2025-02-13, 2025-02-15
     Deployment                :2025-02-16, 2025-02-17
 
+timeline
+    title Solution Development Timeline
+    section Analysis
+      Define Problem: 2025-01-10
+      Collect Requirements: 2025-01-16
+    section Development
+      Design Solution: 2025-01-21
+      Implement Code: 2025-01-26
+      Unit Testing: 2025-02-06
+    section Review & Release
+      Code Review: 2025-02-11
+      QA & Testing: 2025-02-13
+      Deployment: 2025-02-16
+
 ```
