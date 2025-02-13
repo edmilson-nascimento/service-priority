@@ -83,3 +83,22 @@ gitGraph:
     commit
 
 ```
+
+
+```mermaid
+erDiagram
+    ZCUSTOMERS {
+        CHAR(10) CUSTOMER_ID PK
+        VARCHAR(100) NAME
+        VARCHAR(100) EMAIL
+        TIMESTAMP CREATED_AT
+    }
+    ZORDERS {
+        CHAR(10) ORDER_ID PK
+        CHAR(10) CUSTOMER_ID FK
+        DATE ORDER_DATE
+        DECIMAL(10) TOTAL_AMOUNT
+    }
+    ZCUSTOMERS ||--o{ ZORDERS : has
+
+```
