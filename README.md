@@ -102,3 +102,31 @@ erDiagram
     ZCUSTOMERS ||--o{ ZORDERS : has
 
 ```
+
+
+
+## Cenários
+
+Aqui a lista com detalhes de alguns cenarios a considerar durante testes.
+
+
+| Field        | Type         | Key | Description           |
+|-------------|-------------|-----|----------------------|
+| 🔗 | CHAR(10)     | PK  | Unique Customer ID   |
+| NAME        | VARCHAR(100) |     | Customer Name        |
+| EMAIL       | VARCHAR(100) |     | Customer Email       |
+| CREATED_AT  | TIMESTAMP    |     | Record Creation Date |
+
+
+## Alteração de BC do incidente
+No caso de um atendimento ter sido iniciado por uma pessoa e depois passar para outra
+
+
+## Table: ZCUSTOMERS 📋
+
+| Field        | Type         | Key | Description           |
+|-------------|-------------|-----|----------------------|
+| CUSTOMER_ID | CHAR(10)     | PK  | Unique Customer ID   |
+| NAME        | VARCHAR(100) |     | Customer Name        |
+| EMAIL       | VARCHAR(100) |     | Customer Email       |
+| CREATED_AT  | TIMESTAMP    |     | Record Creation Date |
