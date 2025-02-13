@@ -5,3 +5,27 @@
 ![GitHub commit activity (branch)](https://img.shields.io/github/commit-activity/t/edmilson-nascimento/service-priority)
 ![Static Badge](https://img.shields.io/badge/thiago_barcellos-abap-green)
 
+Para atender a necessidade, a tabela criada ficaria da seguinte forma.
+
+
+A regra de negocio é que, para um incidente, sempre que for feita uma alteração de valores, os campos de 'ultima atualização' vão ser atualizados e também o texto descritivo.
+Ao recuperar a informação pro incidente, vamos ter todo o histórico mas exibir apenas o mais recente que é o dado vigente
+
+
+```mermaid
+gantt
+    title Solution Development Timeline
+    dateFormat  YYYY-MM-DD
+    section Analysis
+    Define Problem            :done, 2025-01-10, 2025-01-15
+    Collect Requirements      :done, 2025-01-16, 2025-01-20
+    section Development
+    Design Solution           :active, 2025-01-21, 2025-01-25
+    Implement Code            :2025-01-26, 2025-02-05
+    Unit Testing              :2025-02-06, 2025-02-10
+    section Review & Release
+    Code Review               :2025-02-11, 2025-02-12
+    QA & Testing              :2025-02-13, 2025-02-15
+    Deployment                :2025-02-16, 2025-02-17
+
+```
