@@ -117,6 +117,11 @@ Aqui a lista com detalhes de alguns cenarios a considerar durante testes.
 | EMAIL       | VARCHAR(100) |     | Customer Email       |
 | CREATED_AT  | TIMESTAMP    |     | Record Creation Date |
 
+## Não selecionar ABAP no POP
+Verificar erro
+
+## Quantidade de itens atendidos
+Mostrar na opção de titulo, a quantidade de itens que estão sendo geridos para prioridades
 
 ## Alteração de BC do incidente
 No caso de um atendimento ter sido iniciado por uma pessoa e depois passar para outra
