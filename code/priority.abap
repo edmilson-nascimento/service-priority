@@ -19,6 +19,7 @@ CLASS priority DEFINITION CREATE PUBLIC.
       IMPORTING im_bc         TYPE zca_tquermessebc-bc
       RETURNING VALUE(result) TYPE priority=>tab_ordenation.
 
+    "! <p class="shorttext synchronized" lang="PT">Realiza a persistencia dos dados</p>
     METHODS save
       IMPORTING im_data    TYPE priority=>tab_ordenation
                 im_data_db TYPE priority=>tab_ordenation.
@@ -39,7 +40,10 @@ CLASS priority DEFINITION CREATE PUBLIC.
       tab_quermesse TYPE STANDARD TABLE OF zca_tquermessebc,
       tab_priority  TYPE STANDARD TABLE OF zca_tquermes_pri.
 
-    CONSTANTS atribuido TYPE zca_tquermessebc-estat VALUE 'E0009'.
+    CONSTANTS:
+      BEGIN OF gc_status,
+        atribuido TYPE zca_tquermessebc-estat VALUE 'E0009',
+      END OF gc_status.
 
     data gt_name_list type tab_bc.
 
@@ -50,6 +54,7 @@ CLASS priority DEFINITION CREATE PUBLIC.
       IMPORTING im_list       TYPE tab_bc
       RETURNING VALUE(result) TYPE zca_tquermessebc-bc.
 
+    "! <p class="shorttext synchronized" lang="PT">Retorna a lista com os dados de acordo com o BC selecionado</p>
     METHODS get_list_from_bc
       IMPORTING im_bc         TYPE zca_tquermessebc-bc
       RETURNING VALUE(result) TYPE tab_ordenation.
@@ -107,7 +112,7 @@ CLASS priority IMPLEMENTATION.
 
     SELECT FROM zca_tquermessebc
       FIELDS seq_nr, bc, estat
-      WHERE estat = @atribuido
+      WHERE estat = @me->gc_status-atribuido
       INTO TABLE @DATA(lt_data).
 
     IF sy-subrc <> 0.
@@ -142,7 +147,6 @@ CLASS priority IMPLEMENTATION.
                         selectflag = 'X' ) ).
 
     valuetab = VALUE #( FOR l IN im_list
-*                       ( bc        = l-bc
                         ( user      = l-user
                           name_text = l-name_text ) ).
 
@@ -176,7 +180,7 @@ CLASS priority IMPLEMENTATION.
 *     FIELDS seq_nr, bc, inc, descricao_oc, label_oc, ernam, estat
       FIELDS *
       WHERE bc    = @im_bc
-        AND estat = @atribuido
+        AND estat = @me->gc_status-atribuido
       INTO TABLE @DATA(lt_data).
 
     IF sy-subrc <> 0.
@@ -209,32 +213,57 @@ CLASS priority IMPLEMENTATION.
       RETURN.
     ENDIF.
 
+*    result = VALUE #( FOR l IN im_quermesse
+*                          INDEX INTO index
+*                      LET ordenation = VALUE ty_ordenation( im_priority[ inc = l-inc ] OPTIONAL )
+*                      IN
+*                          ( priority        = COND #( WHEN ordenation IS NOT INITIAL
+*                                                      THEN ordenation-priority
+*                                                      ELSE index )
+*                            item            = ordenation-item
+*                            inc             = l-inc
+**                            descricao_oc    = VALUE #( lt_data[ inc = l-inc ]-descricao_oc OPTIONAL )
+*                            descricao_oc    = l-descricao_oc
+*                            bc              = l-bc
+*                            bc_name         = me->get_bc_name( l-bc )
+*                            functional      = l-ernam
+*                            functional_name = me->get_bc_name( l-ernam )
+*                            erdat           = COND #( WHEN ordenation IS NOT INITIAL
+*                                                      THEN ordenation-erdat
+*                                                      ELSE sy-datum )
+*                            erzet           = COND #( WHEN ordenation IS NOT INITIAL
+*                                                      THEN ordenation-erzet
+*                                                      ELSE sy-uzeit )
+*                            ernam           = COND #( WHEN ordenation IS NOT INITIAL
+*                                                      THEN ordenation-ernam
+*                                                      ELSE sy-uname )
+**                            text            = COND #( WHEN ordenation IS NOT INITIAL
+**                                               THEN ordenation-priority
+**                                               ELSE index )
+*                                               ) ).
 
-*   result = VALUE #( FOR l IN lt_data
-    result = VALUE #( FOR l IN im_quermesse
+    result = VALUE #( FOR p IN im_priority
                           INDEX INTO index
-*                     LET ordenation = VALUE ty_ordenation( lt_priority[ inc = l-inc ] OPTIONAL )
-                      LET ordenation = VALUE ty_ordenation( im_priority[ inc = l-inc ] OPTIONAL )
+                      LET quermesse = VALUE zca_tquermessebc( im_quermesse[ inc = p-inc ] OPTIONAL )
                       IN
-                          ( priority        = COND #( WHEN ordenation IS NOT INITIAL
-                                                      THEN ordenation-priority
+                          ( priority        = COND #( WHEN p-priority IS NOT INITIAL
+                                                      THEN p-priority
                                                       ELSE index )
-                            item            = ordenation-item
-                            inc             = l-inc
-*                            descricao_oc    = VALUE #( lt_data[ inc = l-inc ]-descricao_oc OPTIONAL )
-                            descricao_oc    = l-descricao_oc
-                            bc              = l-bc
-                            bc_name         = me->get_bc_name( l-bc )
-                            functional      = l-ernam
-                            functional_name = me->get_bc_name( l-ernam )
-                            erdat           = COND #( WHEN ordenation IS NOT INITIAL
-                                                      THEN ordenation-erdat
+                            item            = p-item
+                            inc             = p-inc
+                            descricao_oc    = quermesse-descricao_oc
+                            bc              = quermesse-bc
+                            bc_name         = me->get_bc_name( quermesse-bc )
+                            functional      = quermesse-ernam
+                            functional_name = me->get_bc_name( quermesse-ernam )
+                            erdat           = COND #( WHEN p-erdat IS NOT INITIAL
+                                                      THEN p-erdat
                                                       ELSE sy-datum )
-                            erzet           = COND #( WHEN ordenation IS NOT INITIAL
-                                                      THEN ordenation-erzet
+                            erzet           = COND #( WHEN p-erzet IS NOT INITIAL
+                                                      THEN p-erzet
                                                       ELSE sy-uzeit )
-                            ernam           = COND #( WHEN ordenation IS NOT INITIAL
-                                                      THEN ordenation-ernam
+                            ernam           = COND #( WHEN p-ernam IS NOT INITIAL
+                                                      THEN p-ernam
                                                       ELSE sy-uname )
 *                            text            = COND #( WHEN ordenation IS NOT INITIAL
 *                                               THEN ordenation-priority
@@ -270,6 +299,29 @@ CLASS priority IMPLEMENTATION.
 
 
   METHOD get_report_list.
+
+    SELECT FROM zca_tquermessebc
+      FIELDS *
+      WHERE estat = @me->gc_status-atribuido
+      INTO TABLE @DATA(lt_quermesse).
+    IF sy-subrc <> 0.
+      RETURN.
+    ENDIF.
+
+    " Recuperar ordem de atendimento ja salvas
+    SELECT FROM zca_tquermes_pri
+      FIELDS *
+      FOR ALL ENTRIES IN @lt_quermesse
+      WHERE inc = @lt_quermesse-inc
+      INTO TABLE @DATA(lt_priority).
+    IF sy-subrc = 0.
+      SORT lt_priority BY inc ASCENDING
+                          erdat
+                          erzet DESCENDING.
+    ENDIF.
+
+    result = me->build_output_list( im_quermesse = lt_quermesse
+                                    im_priority  = lt_priority ).
   ENDMETHOD.
 
 
@@ -406,6 +458,7 @@ DATA:
   grid         TYPE REF TO cl_gui_alv_grid,
   ok_code      TYPE sy-ucomm,
   save_ok_code TYPE ok_code,
+  gs_variant   TYPE disvariant,
   gs_layout    TYPE lvc_s_layo,
   "! saved data
   gt_db_list   TYPE priority=>tab_ordenation,
@@ -432,6 +485,11 @@ ENDCLASS.
 CLASS application DEFINITION.
 
   PUBLIC SECTION.
+
+    TYPES tab_fcode TYPE STANDARD TABLE OF sy-ucomm WITH DEFAULT KEY.
+
+    METHODS constructor.
+
     " methods for D&D handling
     METHODS handle_grid_drag FOR EVENT ondrag OF cl_gui_alv_grid
       IMPORTING es_row_no e_column e_dragdropobj.
@@ -443,6 +501,10 @@ CLASS application DEFINITION.
                 cl_gui_alv_grid
       IMPORTING e_row e_column e_dragdropobj.
 
+    "! <p class="shorttext synchronized" lang="PT">Retorna a tabela de opções a ser eliminadas no Status-gui</p>
+    METHODS get_excluded
+      RETURNING VALUE(result) TYPE application=>tab_fcode.
+
     METHODS create_controls.
 
   PRIVATE SECTION.
@@ -452,6 +514,8 @@ CLASS application DEFINITION.
     report type char01 value 'R',
     maintain type char01 value 'M',
     end OF gc_option_type.
+
+    data gv_operation_type type char01.
 
     METHODS build_and_assign_handler.
 
@@ -473,6 +537,13 @@ ENDCLASS.
 *&       Class (Implementation)  application
 *&---------------------------------------------------------------------*
 CLASS application IMPLEMENTATION.
+
+
+  METHOD constructor.
+
+    clear me->gv_operation_type.
+
+  ENDMETHOD.
 
   METHOD handle_grid_drag.
 
@@ -537,16 +608,45 @@ CLASS application IMPLEMENTATION.
   ENDMETHOD.
 
 
+  METHOD get_excluded.
+
+    me->gv_operation_type = me->get_operation_type( ).
+
+    IF me->gv_operation_type = me->gc_option_type-report.
+      result = VALUE #( ( 'SAVE' ) ).
+    ENDIF.
+
+  ENDMETHOD.
+
+
   METHOD create_controls.
 
     CONSTANTS lc_structure TYPE dd04d-rollname VALUE 'ZCA_S_QUERMES_PRIORITY'.
 
-    CASE me->get_operation_type( ).
+
+    CASE me->gv_operation_type.
 
       WHEN me->gc_option_type-report.
 
-        cl_demo_output=>display( new priority( )->get_report_list( ) ).
-        LEAVE LIST-PROCESSING.
+        cl_demo_output=>write_data( NEW priority( )->get_report_list( ) ).
+
+        DATA(lv_html) = cl_demo_output=>get( ).
+
+        cl_abap_browser=>show_html( title       = 'Ordem de atendimento de BCs'
+                                    html_string = lv_html
+                                    container   = cl_gui_container=>default_screen ).
+
+        " force cl_gui_container=>default_screen
+        WRITE space.
+
+*        gs_layout-cwidth_opt = abap_on.
+*        gs_variant-report = sy-cprog.
+*
+*        DATA(lt_data) = NEW priority( )->get_report_list( ).
+*        grid->set_table_for_first_display( EXPORTING is_layout       = gs_layout
+*                                                     is_variant      = gs_variant
+*                                           CHANGING  it_fieldcatalog = lt_fieldcatalog
+*                                                     it_outtab       = lt_data ).
 
       WHEN me->gc_option_type-maintain.
 
@@ -555,8 +655,8 @@ CLASS application IMPLEMENTATION.
                            extension = 312
                            side      = cl_gui_docking_container=>dock_at_top ).
 
+        DATA(lt_fieldcatalog) = me->get_fieldcatalog( lc_structure ).
         grid = NEW #( i_parent = container ).
-
         " registrate the methods
         SET HANDLER me->handle_grid_drag FOR grid.
         SET HANDLER me->handle_grid_drop FOR grid.
@@ -565,7 +665,6 @@ CLASS application IMPLEMENTATION.
         me->build_and_assign_handler( ).
         gt_list = me->build_data( ).
         gt_db_list = gt_list.
-        DATA(lt_fieldcatalog) = me->get_fieldcatalog( lc_structure ).
 
         grid->set_table_for_first_display( EXPORTING is_layout       = gs_layout
                                            CHANGING  it_fieldcatalog = lt_fieldcatalog
@@ -573,7 +672,7 @@ CLASS application IMPLEMENTATION.
         grid->refresh_table_display( ).
 
       WHEN OTHERS.
-        LEAVE LIST-PROCESSING.
+        LEAVE TO SCREEN 0.
 
     ENDCASE.
 
@@ -687,15 +786,16 @@ ENDCLASS.
 *&---------------------------------------------------------------------*
 MODULE status_0100 OUTPUT.
 
-  SET PF-STATUS 'STATUS_0100'.
-  SET TITLEBAR 'STATUS_0100'.
-
-  IF grid IS BOUND.
+  application = NEW #( ).
+  IF application IS NOT BOUND.
     RETURN.
   ENDIF.
 
-  application = NEW #( ).
-  IF application IS NOT BOUND.
+  data(lt_excluded) = application->get_excluded( ).
+  SET PF-STATUS 'STATUS_0100' EXCLUDING lt_excluded.
+  SET TITLEBAR 'STATUS_0100'.
+
+  IF grid IS BOUND.
     RETURN.
   ENDIF.
 
