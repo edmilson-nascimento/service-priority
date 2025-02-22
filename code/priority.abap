@@ -6,15 +6,6 @@ CLASS priority DEFINITION CREATE PUBLIC.
 
   PUBLIC SECTION.
     TYPES:
-*      BEGIN OF ty_ordenation,
-*        index        TYPE edi_clustc,
-*        inc          TYPE zca_tquermessebc-inc,
-*        descricao_oc TYPE zca_tquermessebc-descricao_oc,
-*        label_oc     TYPE zca_tquermessebc-label_oc,
-*        bc           TYPE zca_tquermessebc-bc,
-*      END OF ty_ordenation,
-*      ty_ordenation  TYPE zca_tquermes_pri,
-*      tab_ordenation TYPE STANDARD TABLE OF ty_ordenation WITH DEFAULT KEY.
       ty_ordenation  TYPE zca_s_quermes_priority,
       tab_ordenation TYPE zca_t_quermes_priority.
 
@@ -32,6 +23,10 @@ CLASS priority DEFINITION CREATE PUBLIC.
       IMPORTING im_data    TYPE priority=>tab_ordenation
                 im_data_db TYPE priority=>tab_ordenation.
 
+    "! <p class="shorttext synchronized" lang="PT">Retorna a lista de dados para todos os BCs</p>
+    METHODS get_report_list
+      RETURNING VALUE(result) TYPE priority=>tab_ordenation.
+
   PRIVATE SECTION.
 
     TYPES:
@@ -39,7 +34,10 @@ CLASS priority DEFINITION CREATE PUBLIC.
         user      TYPE zca_tquermessebc-bc,
         name_text TYPE adrp-name_text,
       END OF ty_bc,
-      tab_bc TYPE SORTED TABLE OF ty_bc WITH UNIQUE KEY user .
+      tab_bc        TYPE SORTED TABLE OF ty_bc WITH UNIQUE KEY user,
+
+      tab_quermesse TYPE STANDARD TABLE OF zca_tquermessebc,
+      tab_priority  TYPE STANDARD TABLE OF zca_tquermes_pri.
 
     CONSTANTS atribuido TYPE zca_tquermessebc-estat VALUE 'E0009'.
 
@@ -55,6 +53,12 @@ CLASS priority DEFINITION CREATE PUBLIC.
     METHODS get_list_from_bc
       IMPORTING im_bc         TYPE zca_tquermessebc-bc
       RETURNING VALUE(result) TYPE tab_ordenation.
+
+    "! <p class="shorttext synchronized" lang="PT">Após a busca, retorna a construção dos dados</p>
+    METHODS build_output_list
+      IMPORTING im_quermesse  TYPE priority=>tab_quermesse
+                im_priority   TYPE priority=>tab_priority
+      RETURNING VALUE(result) TYPE priority=>tab_ordenation.
 
     METHODS display_order_list
       IMPORTING im_data TYPE tab_ordenation.
@@ -161,6 +165,7 @@ CLASS priority IMPLEMENTATION.
 
   ENDMETHOD.
 
+
   METHOD get_list_from_bc.
 
     IF im_bc IS INITIAL.
@@ -168,7 +173,8 @@ CLASS priority IMPLEMENTATION.
     ENDIF.
 
     SELECT FROM zca_tquermessebc
-      FIELDS seq_nr, bc, inc, descricao_oc, label_oc, ernam, estat
+*     FIELDS seq_nr, bc, inc, descricao_oc, label_oc, ernam, estat
+      FIELDS *
       WHERE bc    = @im_bc
         AND estat = @atribuido
       INTO TABLE @DATA(lt_data).
@@ -182,24 +188,40 @@ CLASS priority IMPLEMENTATION.
       FIELDS *
       FOR ALL ENTRIES IN @lt_data
       WHERE inc = @lt_data-inc
-      INTO TABLE @DATA(priority).
+      INTO TABLE @DATA(lt_priority).
     IF sy-subrc = 0.
       " Desta forma, eu apanho o log mais recente para cada INC
-      SORT priority BY inc   ASCENDING
+      SORT lt_priority BY inc   ASCENDING
                        erdat
                        erzet DESCENDING.
     ENDIF.
 
-    result = VALUE #( FOR l IN lt_data
+    result = me->build_output_list( im_quermesse = lt_data
+                                    im_priority  = lt_priority ).
+
+
+  ENDMETHOD.
+
+
+  METHOD build_output_list.
+
+    IF lines( im_priority ) = 0.
+      RETURN.
+    ENDIF.
+
+
+*   result = VALUE #( FOR l IN lt_data
+    result = VALUE #( FOR l IN im_quermesse
                           INDEX INTO index
-                      LET ordenation = VALUE ty_ordenation( priority[ inc = l-inc ] OPTIONAL )
+*                     LET ordenation = VALUE ty_ordenation( lt_priority[ inc = l-inc ] OPTIONAL )
+                      LET ordenation = VALUE ty_ordenation( im_priority[ inc = l-inc ] OPTIONAL )
                       IN
                           ( priority        = COND #( WHEN ordenation IS NOT INITIAL
                                                       THEN ordenation-priority
                                                       ELSE index )
                             item            = ordenation-item
                             inc             = l-inc
-*                           descricao_oc    = VALUE #( lt_data[ inc = l-inc ]-descricao_oc OPTIONAL )
+*                            descricao_oc    = VALUE #( lt_data[ inc = l-inc ]-descricao_oc OPTIONAL )
                             descricao_oc    = l-descricao_oc
                             bc              = l-bc
                             bc_name         = me->get_bc_name( l-bc )
@@ -220,6 +242,7 @@ CLASS priority IMPLEMENTATION.
                                                ) ).
 
   ENDMETHOD.
+
 
   METHOD display_order_list.
 
@@ -243,6 +266,10 @@ CLASS priority IMPLEMENTATION.
     me->save_data( im_data    = im_data
                    im_data_db = im_data_db ).
 
+  ENDMETHOD.
+
+
+  METHOD get_report_list.
   ENDMETHOD.
 
 
@@ -419,13 +446,13 @@ CLASS application DEFINITION.
     METHODS create_controls.
 
   PRIVATE SECTION.
-  
+
   CONSTANTS:
     BEGIN OF gc_option_type,
     report type char01 value 'R',
     maintain type char01 value 'M',
     end OF gc_option_type.
-    
+
     METHODS build_and_assign_handler.
 
     METHODS build_data
@@ -434,9 +461,10 @@ CLASS application DEFINITION.
     METHODS get_fieldcatalog
       IMPORTING im_strutucre  TYPE tabname
       RETURNING VALUE(result) TYPE lvc_t_fcat.
-      
-      METHODS get_operation_type
-      RETURNING VALUE(result) type char01.
+
+    "! <p class="shorttext synchronized" lang="PT">Retorn o tipo de Operação que será feita</p>
+    METHODS get_operation_type
+      RETURNING VALUE(result) TYPE char01.
 
 ENDCLASS.
 
@@ -511,35 +539,44 @@ CLASS application IMPLEMENTATION.
 
   METHOD create_controls.
 
-    CONSTANTS lc_structure type DD04D-rollname value 'ZCA_S_QUERMES_PRIORITY'.
+    CONSTANTS lc_structure TYPE dd04d-rollname VALUE 'ZCA_S_QUERMES_PRIORITY'.
 
-    " creation of the ALV Grid Control via a docking container
-    container = NEW #( dynnr     = '100'
-                       extension = 312
-                       side      = cl_gui_docking_container=>dock_at_top ).
+    CASE me->get_operation_type( ).
 
-    grid = NEW #( i_parent = container ).
+      WHEN me->gc_option_type-report.
 
-    " registrate the methods
-    SET HANDLER me->handle_grid_drag FOR grid.
-    SET HANDLER me->handle_grid_drop FOR grid.
-    SET HANDLER me->handle_grid_drop_complete FOR grid.
+        cl_demo_output=>display( new priority( )->get_report_list( ) ).
+        LEAVE LIST-PROCESSING.
 
-    me->build_and_assign_handler( ).
-    
-    case me->get_option_type( ).
-    when me->gc_option_type-report .
-    when me->gc_option_type-update .
-    gt_db_list = gt_list = me->build_data( ).
-    DATA(lt_fieldcatalog) = me->get_fieldcatalog( lc_structure ).
+      WHEN me->gc_option_type-maintain.
 
-    grid->set_table_for_first_display( EXPORTING is_layout       = gs_layout
-                                       CHANGING  it_fieldcatalog = lt_fieldcatalog
-                                                 it_outtab       = gt_list ).
-    grid->refresh_table_display( ).
-    when OTHERS.
+        " creation of the ALV Grid Control via a docking container
+        container = NEW #( dynnr     = '100'
+                           extension = 312
+                           side      = cl_gui_docking_container=>dock_at_top ).
+
+        grid = NEW #( i_parent = container ).
+
+        " registrate the methods
+        SET HANDLER me->handle_grid_drag FOR grid.
+        SET HANDLER me->handle_grid_drop FOR grid.
+        SET HANDLER me->handle_grid_drop_complete FOR grid.
+
+        me->build_and_assign_handler( ).
+        gt_list = me->build_data( ).
+        gt_db_list = gt_list.
+        DATA(lt_fieldcatalog) = me->get_fieldcatalog( lc_structure ).
+
+        grid->set_table_for_first_display( EXPORTING is_layout       = gs_layout
+                                           CHANGING  it_fieldcatalog = lt_fieldcatalog
+                                                     it_outtab       = gt_list ).
+        grid->refresh_table_display( ).
+
+      WHEN OTHERS.
+        LEAVE LIST-PROCESSING.
+
     ENDCASE.
-    
+
 
   ENDMETHOD.
 
@@ -618,9 +655,28 @@ CLASS application IMPLEMENTATION.
     result = lt_fieldcatalog.
 
   ENDMETHOD.
-  
-  
+
+
   METHOD get_operation_type.
+
+    DATA result_popup TYPE char01.
+
+    CALL FUNCTION 'K_KKB_POPUP_RADIO2'
+      EXPORTING  i_title   = 'Opções'(o01)
+                 i_text1   = 'Report'(o02)
+                 i_text2   = 'Manutenção'(o03)
+                 i_default = 1
+      IMPORTING  i_result  = result_popup
+      EXCEPTIONS cancel    = 1
+                 OTHERS    = 2.
+    IF sy-subrc <> 0.
+      RETURN.
+    ENDIF.
+
+    result = SWITCH #( result_popup
+                       WHEN 1 THEN me->gc_option_type-report
+                       WHEN 2 THEN me->gc_option_type-maintain ).
+
   ENDMETHOD.
 
 ENDCLASS.
