@@ -47,25 +47,6 @@ gantt
 ```
 
 
-```mermaid
-
-%% Vertical Timeline Workaround using a Sequence Diagram
-sequenceDiagram
-    participant Start
-    participant Analysis
-    participant Development
-    participant Review
-    participant Release
-    Start->>Analysis: Define Problem (2025-01-10)
-    Analysis->>Analysis: Collect Requirements (2025-01-16)
-    Analysis->>Development: Design Solution (2025-01-21)
-    Development->>Development: Implement Code (2025-01-26)
-    Development->>Development: Unit Testing (2025-02-06)
-    Development->>Review: Code Review (2025-02-11)
-    Review->>Review: QA & Testing (2025-02-13)
-    Review->>Release: Deployment (2025-02-16)
-
-```
 
 ```mermaid
 gitGraph:
