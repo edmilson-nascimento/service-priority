@@ -107,7 +107,6 @@ Mostrar na opção de titulo, a quantidade de itens que estão sendo geridos par
 ## Alteração de BC do incidente
 No caso de um atendimento ter sido iniciado por uma pessoa e depois passar para outra
 
-
 ## Table: ZCUSTOMERS 📋
 
 | Field        | Type         | Key | Description           |
@@ -116,3 +115,6 @@ No caso de um atendimento ter sido iniciado por uma pessoa e depois passar para 
 | NAME        | VARCHAR(100) |     | Customer Name        |
 | EMAIL       | VARCHAR(100) |     | Customer Email       |
 | CREATED_AT  | TIMESTAMP    |     | Record Creation Date |
+
+## Notas 🗒️
+- Usar a função `REUSE_ALV_COMMENTARY_WRITE` para criar um _header_ como é feito no report `zlog_rls10020` para o ALV List;
