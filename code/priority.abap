@@ -7,7 +7,19 @@ CLASS priority DEFINITION CREATE PUBLIC.
   PUBLIC SECTION.
     TYPES:
       ty_ordenation  TYPE zca_s_quermes_priority,
-      tab_ordenation TYPE zca_t_quermes_priority.
+      tab_ordenation TYPE zca_t_quermes_priority,
+
+      BEGIN OF ty_output,
+        priority        TYPE zca_s_quermes_priority-priority,
+        inc             TYPE zca_s_quermes_priority-inc,
+        descricao_oc    TYPE zca_s_quermes_priority-descricao_oc,
+        bc_name         TYPE zca_s_quermes_priority-bc_name,
+        functional_name TYPE zca_s_quermes_priority-functional_name,
+        erdat           TYPE zca_s_quermes_priority-erdat,
+        erzet           TYPE zca_s_quermes_priority-erzet,
+        ernam           TYPE zca_s_quermes_priority-ernam,
+      END OF ty_output,
+      tab_output TYPE STANDARD TABLE OF ty_output WITH DEFAULT KEY.
 
     METHODS get_responsable
       RETURNING VALUE(result) TYPE zca_tquermessebc-bc.
@@ -26,7 +38,7 @@ CLASS priority DEFINITION CREATE PUBLIC.
 
     "! <p class="shorttext synchronized" lang="PT">Retorna a lista de dados para todos os BCs</p>
     METHODS get_report_list
-      RETURNING VALUE(result) TYPE priority=>tab_ordenation.
+      RETURNING VALUE(result) TYPE priority=>tab_output.
 
   PRIVATE SECTION.
 
@@ -38,7 +50,8 @@ CLASS priority DEFINITION CREATE PUBLIC.
       tab_bc        TYPE SORTED TABLE OF ty_bc WITH UNIQUE KEY user,
 
       tab_quermesse TYPE STANDARD TABLE OF zca_tquermessebc,
-      tab_priority  TYPE STANDARD TABLE OF zca_tquermes_pri.
+      tab_priority  TYPE STANDARD TABLE OF zca_tquermes_pri .
+
 
     CONSTANTS:
       BEGIN OF gc_status,
@@ -61,9 +74,10 @@ CLASS priority DEFINITION CREATE PUBLIC.
 
     "! <p class="shorttext synchronized" lang="PT">Após a busca, retorna a construção dos dados</p>
     METHODS build_output_list
-      IMPORTING im_quermesse  TYPE priority=>tab_quermesse
-                im_priority   TYPE priority=>tab_priority
-      RETURNING VALUE(result) TYPE priority=>tab_ordenation.
+      IMPORTING im_quermesse       TYPE priority=>tab_quermesse
+                im_priority        TYPE priority=>tab_priority
+      EXPORTING VALUE(ex_report)   TYPE priority=>tab_output
+                VALUE(ex_maintain) TYPE priority=>tab_ordenation.
 
     METHODS display_order_list
       IMPORTING im_data TYPE tab_ordenation.
@@ -200,75 +214,96 @@ CLASS priority IMPLEMENTATION.
                        erzet DESCENDING.
     ENDIF.
 
-    result = me->build_output_list( im_quermesse = lt_data
-                                    im_priority  = lt_priority ).
-
+    me->build_output_list( EXPORTING im_quermesse = lt_data
+                                     im_priority  = lt_priority
+                           IMPORTING ex_maintain  = result ).
 
   ENDMETHOD.
 
 
   METHOD build_output_list.
 
+    DATA: ls_report_empty TYPE priority=>ty_output,
+          lv_bc           TYPE priority=>ty_ordenation-bc.
+
+  clear: ex_report, ex_maintain.
+
     IF lines( im_priority ) = 0.
+      " Quando ainda não ha prioridades atribuidas
+
+      ex_maintain = VALUE #( FOR l IN im_quermesse
+                                 INDEX INTO index
+                             LET ordenation = VALUE ty_ordenation( im_priority[ inc = l-inc ] OPTIONAL )
+                             IN
+                                 ( priority        = COND #( WHEN ordenation IS NOT INITIAL
+                                                             THEN ordenation-priority
+                                                             ELSE index )
+                                   item            = ordenation-item
+                                   inc             = l-inc
+                                   descricao_oc    = l-descricao_oc
+                                   bc              = l-bc
+                                   bc_name         = me->get_bc_name( l-bc )
+                                   functional      = l-ernam
+                                   functional_name = me->get_bc_name( l-ernam )
+                                   erdat           = COND #( WHEN ordenation IS NOT INITIAL
+                                                             THEN ordenation-erdat
+                                                             ELSE sy-datum )
+                                   erzet           = COND #( WHEN ordenation IS NOT INITIAL
+                                                             THEN ordenation-erzet
+                                                             ELSE sy-uzeit )
+                                   ernam           = COND #( WHEN ordenation IS NOT INITIAL
+                                                             THEN ordenation-ernam
+                                                             ELSE sy-uname ) ) ).
+      SORT ex_maintain ASCENDING BY bc
+                                    priority.
       RETURN.
     ENDIF.
 
-*    result = VALUE #( FOR l IN im_quermesse
-*                          INDEX INTO index
-*                      LET ordenation = VALUE ty_ordenation( im_priority[ inc = l-inc ] OPTIONAL )
-*                      IN
-*                          ( priority        = COND #( WHEN ordenation IS NOT INITIAL
-*                                                      THEN ordenation-priority
-*                                                      ELSE index )
-*                            item            = ordenation-item
-*                            inc             = l-inc
-**                            descricao_oc    = VALUE #( lt_data[ inc = l-inc ]-descricao_oc OPTIONAL )
-*                            descricao_oc    = l-descricao_oc
-*                            bc              = l-bc
-*                            bc_name         = me->get_bc_name( l-bc )
-*                            functional      = l-ernam
-*                            functional_name = me->get_bc_name( l-ernam )
-*                            erdat           = COND #( WHEN ordenation IS NOT INITIAL
-*                                                      THEN ordenation-erdat
-*                                                      ELSE sy-datum )
-*                            erzet           = COND #( WHEN ordenation IS NOT INITIAL
-*                                                      THEN ordenation-erzet
-*                                                      ELSE sy-uzeit )
-*                            ernam           = COND #( WHEN ordenation IS NOT INITIAL
-*                                                      THEN ordenation-ernam
-*                                                      ELSE sy-uname )
-**                            text            = COND #( WHEN ordenation IS NOT INITIAL
-**                                               THEN ordenation-priority
-**                                               ELSE index )
-*                                               ) ).
+    DATA(lt_report_temp) = VALUE zca_t_quermes_priority(
+                                    FOR p IN im_priority
+                                    INDEX INTO index
+                                LET quermesse = VALUE zca_tquermessebc( im_quermesse[ inc = p-inc ] OPTIONAL )
+                                IN
+                                    ( priority        = COND #( WHEN p-priority IS NOT INITIAL
+                                                                THEN p-priority
+                                                                ELSE index )
+                                      item            = p-item
+                                      inc             = p-inc
+                                      descricao_oc    = quermesse-descricao_oc
+                                      bc              = quermesse-bc
+                                      bc_name         = me->get_bc_name( quermesse-bc )
+                                      functional      = quermesse-ernam
+                                      functional_name = me->get_bc_name( quermesse-ernam )
+                                      erdat           = COND #( WHEN p-erdat IS NOT INITIAL
+                                                                THEN p-erdat
+                                                                ELSE sy-datum )
+                                      erzet           = COND #( WHEN p-erzet IS NOT INITIAL
+                                                                THEN p-erzet
+                                                                ELSE sy-uzeit )
+                                      ernam           = COND #( WHEN p-ernam IS NOT INITIAL
+                                                                THEN p-ernam
+                                                                ELSE sy-uname ) ) ).
+    SORT lt_report_temp ASCENDING BY bc
+                                priority.
 
-    result = VALUE #( FOR p IN im_priority
-                          INDEX INTO index
-                      LET quermesse = VALUE zca_tquermessebc( im_quermesse[ inc = p-inc ] OPTIONAL )
-                      IN
-                          ( priority        = COND #( WHEN p-priority IS NOT INITIAL
-                                                      THEN p-priority
-                                                      ELSE index )
-                            item            = p-item
-                            inc             = p-inc
-                            descricao_oc    = quermesse-descricao_oc
-                            bc              = quermesse-bc
-                            bc_name         = me->get_bc_name( quermesse-bc )
-                            functional      = quermesse-ernam
-                            functional_name = me->get_bc_name( quermesse-ernam )
-                            erdat           = COND #( WHEN p-erdat IS NOT INITIAL
-                                                      THEN p-erdat
-                                                      ELSE sy-datum )
-                            erzet           = COND #( WHEN p-erzet IS NOT INITIAL
-                                                      THEN p-erzet
-                                                      ELSE sy-uzeit )
-                            ernam           = COND #( WHEN p-ernam IS NOT INITIAL
-                                                      THEN p-ernam
-                                                      ELSE sy-uname )
-*                            text            = COND #( WHEN ordenation IS NOT INITIAL
-*                                               THEN ordenation-priority
-*                                               ELSE index )
-                                               ) ).
+    " Colocar separação de linhas entre os recursos
+    " Temporario (eu acho)
+    LOOP AT lt_report_temp INTO DATA(ls_report).
+
+      IF lv_bc IS INITIAL.
+        lv_bc = ls_report-bc.
+      ENDIF.
+
+      IF lv_bc <> ls_report-bc.
+        ex_report = VALUE #( BASE ex_report
+                             ( ls_report_empty ) ).
+        lv_bc = ls_report-bc.
+      ENDIF.
+
+      ex_report = VALUE #( BASE ex_report
+                           ( CORRESPONDING #( ls_report ) ) ).
+
+    ENDLOOP.
 
   ENDMETHOD.
 
@@ -320,8 +355,9 @@ CLASS priority IMPLEMENTATION.
                           erzet DESCENDING.
     ENDIF.
 
-    result = me->build_output_list( im_quermesse = lt_quermesse
-                                    im_priority  = lt_priority ).
+    me->build_output_list( EXPORTING im_quermesse = lt_quermesse
+                                     im_priority  = lt_priority
+                           IMPORTING ex_report    = result ).
   ENDMETHOD.
 
 
@@ -623,13 +659,15 @@ CLASS application IMPLEMENTATION.
 
     CONSTANTS lc_structure TYPE dd04d-rollname VALUE 'ZCA_S_QUERMES_PRIORITY'.
 
-
     CASE me->gv_operation_type.
 
       WHEN me->gc_option_type-report.
 
         cl_demo_output=>write_data( NEW priority( )->get_report_list( ) ).
-
+        
+          cl_demo_output=>begin_section(
+        title = 'Lista de atendimento por ordem de prioridades'
+    ).
         DATA(lv_html) = cl_demo_output=>get( ).
 
         cl_abap_browser=>show_html( title       = 'Ordem de atendimento de BCs'
@@ -638,15 +676,6 @@ CLASS application IMPLEMENTATION.
 
         " force cl_gui_container=>default_screen
         WRITE space.
-
-*        gs_layout-cwidth_opt = abap_on.
-*        gs_variant-report = sy-cprog.
-*
-*        DATA(lt_data) = NEW priority( )->get_report_list( ).
-*        grid->set_table_for_first_display( EXPORTING is_layout       = gs_layout
-*                                                     is_variant      = gs_variant
-*                                           CHANGING  it_fieldcatalog = lt_fieldcatalog
-*                                                     it_outtab       = lt_data ).
 
       WHEN me->gc_option_type-maintain.
 
