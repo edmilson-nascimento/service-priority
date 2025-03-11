@@ -93,7 +93,7 @@ Aqui a lista com detalhes de alguns cenarios a considerar durante testes.
 
 | Field        | Type         | Key | Description           |
 |-------------|-------------|-----|----------------------|
-| 🔗 | CHAR(10)     | PK  | Unique Customer ID   |
+| CUSTOMER_ID | CHAR(10)     | PK  | Unique Customer ID   |
 | NAME        | VARCHAR(100) |     | Customer Name        |
 | EMAIL       | VARCHAR(100) |     | Customer Email       |
 | CREATED_AT  | TIMESTAMP    |     | Record Creation Date |
