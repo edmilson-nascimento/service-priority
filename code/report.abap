@@ -528,6 +528,7 @@ CLASS priority IMPLEMENTATION.
         int TYPE lvc_s_scol-color-int VALUE 1,
         inv TYPE lvc_s_scol-color-inv VALUE 0,
       END OF lc_color_zero,
+
       BEGIN OF lc_color_one,
         col TYPE lvc_s_scol-color-col VALUE 1,
         int TYPE lvc_s_scol-color-int VALUE 1,
