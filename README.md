@@ -116,4 +116,4 @@ No caso de um atendimento ter sido iniciado por uma pessoa e depois passar para 
 | CREATED_AT  | TIMESTAMP    |     | Record Creation Date |
 
 ## Notas 🗒️
-- Usar a função `REUSE_ALV_COMMENTARY_WRITE` para criar um _header_ como é feito no report `zlog_rls10020` para o ALV List;
+- Usar a função `REUSE_ALV_COMMENTARY_WRITE` para criar um _header_ como é feito no report `ZLOG_RLS10020` para o ALV List;
