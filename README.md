@@ -86,7 +86,6 @@ erDiagram
 
 
 ## Cenários
-
 Aqui a lista com detalhes de alguns cenarios a considerar durante testes.
 
 
